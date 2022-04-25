@@ -1,0 +1,48 @@
+name: CI/CD
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  SERVICE: solar-works-job-numbus
+  PROJECT_ID: charge-bee
+  GCP_SA: etl-55@charge-bee.iam.gserviceaccount.com
+  PUBLIC_URL: https://solar-works-job-numbus-mi66db2bva-uc.a.run.app
+  PYTHON_ENV: prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0.2.0
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: Authorize Docker push
+        run: gcloud auth configure-docker
+
+      - name: Build and Push Container
+        run: |-
+          DOCKER_BUILDKIT=1 docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} --build-arg BUILD_ENV=${{ env.PYTHON_ENV }} .
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+
+      - name: Deploy to Main module to Cloud Run
+        run: >-
+          gcloud run deploy ${{ env.SERVICE }}
+          --image=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          --concurrency=1
+          --memory=8Gi
+          --cpu=2
+          --platform=managed
+          --service-account=${{ env.GCP_SA }}
+          --region=us-central1
+          --timeout=900
+          --set-env-vars=PYTHON_ENV=${{ env.PYTHON_ENV }},PUBLIC_URL=${{ env.PUBLIC_URL }},GCP_SA=${{ env.GCP_SA }},USERNAME=${{ secrets.USERNAME }},JN_PWD=${{ secrets.JN_PWD }}
