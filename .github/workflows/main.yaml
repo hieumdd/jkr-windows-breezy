@@ -1,48 +1,109 @@
 name: CI/CD
+
 on:
   push:
     branches:
       - master
+      - dev
   workflow_dispatch:
 
+concurrency: ${{ github.ref }}
+
 env:
-  SERVICE: solar-works-job-numbus
-  PROJECT_ID: charge-bee
-  GCP_SA: etl-55@charge-bee.iam.gserviceaccount.com
-  PUBLIC_URL: https://solar-works-job-numbus-mi66db2bva-uc.a.run.app
-  PYTHON_ENV: prod
+  PROJECT_ID: jkr-windows
+  REGION: us-central1
+  GCP_SA: etl-262@jkr-windows.iam.gserviceaccount.com
+  ENV_KEY: env-vars
+  ENV_FILE: env.yaml
 
 jobs:
+  set-env:
+    runs-on: ubuntu-latest
+    outputs:
+      svc-name: ${{ steps.set-svc-name.outputs.svc-name }}
+    steps:
+      - name: Set env vars (dev)
+        if: github.ref_name == 'dev'
+        run: |
+          echo "SERVICE_NAME=jkr-windows-breezy-dev" >> $GITHUB_ENV
+          echo "PUBLIC_URL=X" >> $GITHUB_ENV
+
+      - name: Set env vars (prod)
+        if: github.ref_name == 'master'
+        run: |
+          echo "SERVICE_NAME=jkr-windows-breezy" >> $GITHUB_ENV
+          echo "PUBLIC_URL=X" >> $GITHUB_ENV
+
+      - id: set-svc-name
+        name: Set Service Name
+        run: echo "::set-output name=svc-name::${{ env.SERVICE_NAME}}"
+
+      - name: Create ${{ env.ENV_KEY }}
+        run: |
+          echo "BREEZY_EMAIL: ${{ secrets.BREEZY_EMAIL }}" >> ${{ env.ENV_FILE }}
+          echo "BREEZY_PWD: ${{ secrets.BREEZY_PWD }}" >> ${{ env.ENV_FILE }}
+
+          echo "GCP_SA: ${{ env.GCP_SA }}" >> ${{ env.ENV_FILE }}
+          echo "PUBLIC_URL: ${{ env.PUBLIC_URL }}" >> ${{ env.ENV_FILE }}
+
+      - name: Upload ${{ env.ENV_FILE }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.ENV_KEY }}
+          path: ${{ env.ENV_FILE }}
+
   deploy:
     runs-on: ubuntu-latest
+    needs: set-env
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup Cloud SDK
-        uses: google-github-actions/setup-gcloud@v0.2.0
+      - run: |
+          echo "IMAGE=${{ env.PROJECT_ID }}/${{ needs.set-env.outputs.svc-name }}:${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Download ${{ env.ENV_FILE }}
+        uses: actions/download-artifact@v2
         with:
-          project_id: ${{ env.PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
-          export_default_credentials: true
+          name: ${{ env.ENV_KEY }}
+
+      - name: Auth
+        uses: "google-github-actions/auth@v0"
+        with:
+          credentials_json: "${{ secrets.GCP_SA_KEY }}"
+
+      - name: Set up Cloud SDK
+        uses: "google-github-actions/setup-gcloud@v0"
 
       - name: Authorize Docker push
         run: gcloud auth configure-docker
 
-      - name: Build and Push Container
+      - name: Build & Push
         run: |-
-          DOCKER_BUILDKIT=1 docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} --build-arg BUILD_ENV=${{ env.PYTHON_ENV }} .
-          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          docker build -t gcr.io/${{ env.IMAGE }} --build-arg BUILD_ENV=prod .
+          docker push gcr.io/${{ env.IMAGE }}
 
-      - name: Deploy to Main module to Cloud Run
+      - name: Deploy to Cloud Run
         run: >-
-          gcloud run deploy ${{ env.SERVICE }}
-          --image=gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+          gcloud run deploy ${{ needs.set-env.outputs.svc-name }}
+          --image=gcr.io/${{ env.IMAGE }}
           --concurrency=1
-          --memory=8Gi
+          --memory=4Gi
           --cpu=2
           --platform=managed
-          --service-account=${{ env.GCP_SA }}
-          --region=us-central1
+          --service-account=${{ secrets.GCP_SA }}
+          --region=${{ env.REGION }}
           --timeout=900
-          --set-env-vars=PYTHON_ENV=${{ env.PYTHON_ENV }},PUBLIC_URL=${{ env.PUBLIC_URL }},GCP_SA=${{ env.GCP_SA }},USERNAME=${{ secrets.USERNAME }},JN_PWD=${{ secrets.JN_PWD }}
+          --env-vars-file=${{ env.ENV_FILE }}
+
+  clean-up:
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs: deploy
+    steps:
+      - run: echo "" > ${{ env.ENV_FILE }}
+
+      - uses: actions/upload-artifact@v2
+        with:
+          name: ${{ env.ENV_KEY }}
+          path: ${{ env.ENV_FILE }}
