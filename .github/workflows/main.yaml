@@ -43,6 +43,7 @@ jobs:
           echo "BREEZY_EMAIL: ${{ secrets.BREEZY_EMAIL }}" >> ${{ env.ENV_FILE }}
           echo "BREEZY_PWD: ${{ secrets.BREEZY_PWD }}" >> ${{ env.ENV_FILE }}
 
+          echo "PYTHON_ENV: prod" >> ${{ env.ENV_FILE }}
           echo "GCP_SA: ${{ env.GCP_SA }}" >> ${{ env.ENV_FILE }}
           echo "PUBLIC_URL: ${{ env.PUBLIC_URL }}" >> ${{ env.ENV_FILE }}
 
