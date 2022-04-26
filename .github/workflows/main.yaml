@@ -26,13 +26,13 @@ jobs:
         if: github.ref_name == 'dev'
         run: |
           echo "SERVICE_NAME=jkr-windows-breezy-dev" >> $GITHUB_ENV
-          echo "PUBLIC_URL=X" >> $GITHUB_ENV
+          echo "PUBLIC_URL=https://jkr-windows-breezy-dev-gxtlldfv4q-uc.a.run.app" >> $GITHUB_ENV
 
       - name: Set env vars (prod)
         if: github.ref_name == 'master'
         run: |
           echo "SERVICE_NAME=jkr-windows-breezy" >> $GITHUB_ENV
-          echo "PUBLIC_URL=X" >> $GITHUB_ENV
+          echo "PUBLIC_URL=https://jkr-windows-breezy-gxtlldfv4q-uc.a.run.app" >> $GITHUB_ENV
 
       - id: set-svc-name
         name: Set Service Name
