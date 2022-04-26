@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "solar-works-job-nimbus"
-version = "2.0.0"
+name = "jkr-windows-breezy"
+version = "1.0.0"
 description = ""
 authors = ["HM <hieumdd@gmail.com>"]
 
@@ -9,13 +9,13 @@ python = "~3.9"
 selenium = "^3.141.0"
 selenium-wire = "^4.5.2"
 requests = "^2.26.0"
-google-cloud-bigquery = "^2.26.0"
+google-cloud-bigquery = "^3.0.1"
 functions-framework = "^2.2.1"
 google-cloud-tasks = "2.5.1"
 compose = "^1.2.8"
 
 [tool.poetry.dev-dependencies]
-black = "^21.9b0"
+black = "^22.3.0"
 pytest = "^6.2.5"
 mypy = "^0.910"
 types-requests = "^2.26.0"
