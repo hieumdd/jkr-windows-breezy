@@ -2,6 +2,7 @@ import pytest
 
 from breezy.pipeline import pipelines
 from breezy import breezy_repo, breezy_service
+from tasks.task_service import create_tasks_service
 
 
 @pytest.fixture(
@@ -25,7 +26,7 @@ class TestBreezy:
         assert res
 
 
-# class TestTask:
-#     def test_controller(self):
-#         res = run({"task": "job-nimbus"})
-#         assert res["tasks"] > 0
+class TestTask:
+    def test_service(self):
+        res = create_tasks_service({})
+        assert res["tasks"] > 0

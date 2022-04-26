@@ -13,7 +13,7 @@ def load(table: str, schema: list[dict[str, Any]]):
             return 0
 
         output_rows = (
-            BQ_CLIENT.load_table_from_json(
+            BQ_CLIENT.load_table_from_json(  # type: ignore
                 rows,
                 f"{DATASET}.{table}",
                 job_config=bigquery.LoadJobConfig(
