@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jkr-windows-breezy"
-version = "1.0.0"
+version = "1.1.0"
 description = ""
 authors = ["HM <hieumdd@gmail.com>"]
 
