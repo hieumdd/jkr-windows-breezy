@@ -1,13 +1,16 @@
-from typing import Any
+from typing import Any, Callable
 import os
+from urllib.parse import urljoin
 
 from seleniumwire import webdriver
-from seleniumwire.request import Request
+from seleniumwire.request import HTTPHeaders
 from selenium.webdriver.chrome.options import Options
 import requests
 
+BASE_URL = "https://app.breezy.hr/api/company/dd4c90bcaaf1/"
 
-def get_driver() -> webdriver.Chrome:
+
+def _get_driver() -> webdriver.Chrome:
     chrome_options = Options()
     if os.getenv("PYTHON_ENV") == "prod":
         chrome_options.add_argument("--headless")
@@ -24,16 +27,16 @@ def get_driver() -> webdriver.Chrome:
     return driver
 
 
-def get_request(report_url: str) -> Request:
-    driver = get_driver()
+def get_headers() -> HTTPHeaders:
+    driver = _get_driver()
 
     driver.get("https://app.breezy.hr/signin")
 
     email = driver.find_element_by_xpath('//*[@id="email_address-2"]')
-    email.send_keys(os.getenv('BREEZY_EMAIL'))
+    email.send_keys(os.getenv("BREEZY_EMAIL"))
 
     password = driver.find_element_by_xpath('//*[@id="password-2"]')
-    password.send_keys(os.getenv('BREEZY_PWD'))
+    password.send_keys(os.getenv("BREEZY_PWD"))
 
     login = driver.find_element_by_xpath(
         '//*[@id="wf-form-Inclusive-Mini-Course"]/div[4]/div/input'
@@ -44,28 +47,17 @@ def get_request(report_url: str) -> Request:
 
     driver.quit()
 
-    return request
+    return request.headers
 
 
-def get_data(request: Request):
-    with requests.get(
-        "https://app.breezy.hr/api/company/dd4c90bcaaf1/reports/overview",
-        params={
-            "date_range": "customRange",
-            "start_date": "2022-04-01",
-            "end_date": "2022-04-15",
-        },
-        headers=request.headers,
-    ) as r:
-        res = r.json()
-        return res
+def get_api(uri: str, params_fn: Callable[[], dict[str, Any]]):
+    def _get(headers: HTTPHeaders):
+        with requests.get(
+            urljoin(BASE_URL, uri),
+            params=params_fn(),
+            headers=headers,
+        ) as r:
+            res = r.json()
+            return res
 
-
-def transform(res: dict[str, Any]) -> list[dict]:
-    return [
-        {
-            "date": key,
-            **value["data"],
-        }
-        for key, value in res["candidates"]["volume_history"].items()
-    ]
+    return _get
