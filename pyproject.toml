@@ -11,7 +11,7 @@ selenium-wire = "^4.5.2"
 requests = "^2.26.0"
 google-cloud-bigquery = "^3.0.1"
 functions-framework = "^2.2.1"
-google-cloud-tasks = "2.5.1"
+google-cloud-tasks = "^2.8.1"
 compose = "^1.2.8"
 
 [tool.poetry.dev-dependencies]
